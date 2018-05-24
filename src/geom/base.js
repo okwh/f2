@@ -109,13 +109,19 @@ class Geom extends Base {
   // 分组数据
   _groupData(data) {
     const self = this;
+    const colDefs = self.get('colDefs');
     const groupScales = self._getGroupScales();
     if (groupScales.length) {
+      const appendConditions = {};
       const names = [];
-      Util.each(groupScales, function(scale) {
-        names.push(scale.field);
+      Util.each(groupScales, scale => {
+        const field = scale.field;
+        names.push(field);
+        if (colDefs && colDefs[field] && colDefs[field].values) { // 用户指定了顺序
+          appendConditions[scale.field] = colDefs[field].values;
+        }
       });
-      return Util.Array.group(data, names);
+      return Util.Array.group(data, names, appendConditions);
     }
     return [ data ];
 
