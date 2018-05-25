@@ -3,9 +3,50 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
-  <title>某基业绩走势图</title>
+  <title>某基业绩走势图(带有用户交易行为)</title>
   <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
   <link rel="stylesheet" href="./css/performance.css">
+  <style>
+    #dealMoney {
+      display: none;
+    }
+
+    .tooltip-title {
+      line-height: 15px;
+    }
+
+    /*iPhone 6 横屏*/
+    @media only screen and (min-device-width : 375px) and (max-device-width : 667px) and (orientation : landscape) {
+      .item {
+        width: auto;
+        margin-left: 12px;
+      }
+      .item:nth-child(1) {
+        order: 5;
+      }
+      .item:nth-child(2) {
+        order: 4;
+      }
+      .item:nth-child(3) {
+        order: 3;
+      }
+      .item:nth-child(4) {
+        order: 2;
+      }
+      .item:nth-child(5) {
+        order: 1;
+      }
+
+      .tooltip-title {
+        line-height: 40px;
+      }
+
+      #dealMoney {
+        display: inline;
+        width: auto;
+      }
+    }
+  </style>
 </head>
 <body>
 <div class="container-fluid chart-card">
@@ -14,9 +55,12 @@
   </div>
   <!-- Content here -->
   <div class="chart-wrapper">
+    <!-- 自定义 tooltip -->
     <div class="tooltip-wrapper hidden">
       <div class="tooltip-title" id="tooltipTitle"></div>
       <div class="tooltip-content" id="tooltip">
+        <div class="item" id="dealMoney">
+        </div>
         <div class="item">
           <span class="item-marker" style="background: #1890ff"></span>
           <span>本基金:</span>
@@ -47,10 +91,18 @@
           <span>同类均值:</span>
           <span class="item-value" data-type="同类平均">--</span>
         </div>
-        <div class="item" style="padding-right: 0;">
+        <div class="item">
           <span class="item-marker" style="background: #B37FEB"></span>
           <span>沪深300:</span>
           <span class="item-value" data-type="沪深300">--</span>
+        </div>
+        <div class="item">
+          <span class="item-marker-point" style="background: #FA8C16"></span>
+          <span>买入点</span>
+        </div>
+        <div class="item" style="padding-right: 0;">
+          <span class="item-marker-point" style="background: #1890FF"></span>
+          <span>卖出点</span>
         </div>
     </div>
     <!-- 图表主题 -->
@@ -112,6 +164,38 @@
       }
     }, animateCfg));
   });
+  Animate.registerAnimation('pointZoom', function (shape, animateCfg) {
+    const r = shape.attr('r');
+    shape.attr('r', 0);
+    shape.animate().to(Util.mix({
+      attrs: {
+        r
+      }
+    }, animateCfg));
+  });
+   // 给数据打标，标记存在交易行为的数据，tag: 0 表示不存在交易，tag: 1 表示买入，tag: 2 表示卖出
+  function mockData(data) {
+    const buyDates = [ '2018-03-23', '2018-04-03', '2018-04-26', '2018-05-02'  ];
+    const sellDates = [ '2018-05-07', '2018-05-10', '2018-05-15' ];
+
+    data.forEach(item => {
+      const date = item.reportDate;
+      const name = item.name;
+      if (name === '本基金') {
+        if (buyDates.indexOf(date) !== -1) {
+          item.tag = 1;
+          item.deal = 1000;
+        } else if (sellDates.indexOf(date) !== -1) {
+          item.tag = 2;
+          item.deal = 1000;
+        } else {
+          item.tag = 0;
+        }
+      }
+    });
+
+    return data;
+  }
 
   const colorMap = {
     '本基金': '#1890FF',
@@ -123,6 +207,10 @@
     '沪深300': 1,
     '同类平均': 1
   };
+  const tagImageMap = {
+    1: 'https://gw.alipayobjects.com/zos/rmsportal/ueFdchLiHajoHkuQIslH.png',
+    2: 'https://gw.alipayobjects.com/zos/rmsportal/LnOYhcIVlbunHkgpoCLB.png'
+  };
 
   // 昨天的收益率，用于图例的绘制，无论时间切换维度多少，默认都会显示昨天的收益率
   const yesterdayRates = {
@@ -130,11 +218,8 @@
     '沪深300': 3.71,
     '同类平均': 3.54
   };
+
   const yesterday = '2018-05-22（昨日）';
-
-  const landscape = window.innerWidth > window.innerHeight ? true : false;
-  const xTickCount = landscape ? 5 : 3;
-
   // 图表绘制完成之后绘制图例
   $('#chartLegend .chart-legend-title').text(yesterday);
   $('#chartLegend .item-value').each((index, ele) => {
@@ -152,6 +237,9 @@
     $(ele).text(value + '%');
   });
 
+  const landscape = window.innerWidth > window.innerHeight ? true : false;
+  const xTickCount = landscape ? 5 : 3;
+
   const chart = new Chart({
     id: 'mountNode',
     pixelRatio: window.devicePixelRatio,
@@ -160,6 +248,7 @@
 
   // 处理数据
   $.getJSON('./data/performance/one-month.json', json => {
+    json = mockData(json);
     chart.source(json, {
       reportDate: {
         type: 'timeCat',
@@ -220,6 +309,7 @@
     });
     chart.legend(false); // 不使用默认图例
     chart.tooltip({
+      showCrosshairs: true,
       crosshairsStyle: {
         stroke: '#CAD7EF'
       },
@@ -227,12 +317,29 @@
       onChange(obj) {
         const items = obj.items;
         const title = items[0].origin.reportDate;
-
         const rates = {};
+        let tag;
+        let dealMoney;
         items.forEach(item => {
           rates[item.name] = item.value * 1;
+          if (item.origin.tag) {
+            tag = item.origin.tag;
+            dealMoney = item.origin.deal;
+          }
         });
-        $('#tooltipTitle').text(title);
+
+        let titleContent;
+        if (tag) { // 用户有交易操作
+          titleContent = title + `<img src="${tagImageMap[tag]}" style="width: 27.5px;height: 15px;margin-left: 8px;" />`;
+          const dealInfo = (tag === 1 ? '买入: ' : '卖出: ') + dealMoney + '元';
+          $('#dealMoney').html(dealInfo);
+        } else {
+          titleContent = title;
+          $('#dealMoney').html('');
+        }
+
+        $('#tooltipTitle').html(titleContent);
+
         $('#tooltip .item-value').each((index, ele) => {
           const type = $(ele).data('type');
           let value = rates[type];
@@ -243,17 +350,19 @@
           } else if (value < 0) {
             color = '#53BC20';
           } else {
-            color ='#2E2E2E';
+            color = '#2E2E2E';
           }
           $(ele).css({ color });
           $(ele).text(value + '%');
         });
+
         $('.tooltip-wrapper').removeClass('hidden');
       },
       onHide() {
         $('.tooltip-wrapper').addClass('hidden');
       }
     });
+
     chart.line()
       .position('reportDate*rate')
       .color('name', val => {
@@ -271,11 +380,40 @@
           duration: 500
         }
       });
+    chart.point()
+      .position('reportDate*rate')
+      .size('tag', function (val) {
+        return val ? 3 : 0;
+      })
+      .style('tag', {
+        fill: function fill(val) {
+          if (val === 2) {
+            return '#1890ff';
+          } else if (val === 1) {
+            return '#FA8C16';
+          }
+        },
+        stroke: '#fff',
+        lineWidth: 1.5
+      })
+      .animate({
+        appear: {
+          duration: 500,
+        },
+        enter: {
+          animation: 'pointZoom',
+          duration: 450,
+          delay: 200
+        },
+        update: {
+          duration: 500
+        }
+      });
     chart.render();
   });
 
   // button 点击操作
-  $('.tab button').click(e => {
+  $('.tab button').on('touchstart', e => {
     const target = $(e.target);
     const id = target.attr('id');
     if (target.hasClass('active')) {
@@ -288,16 +426,18 @@
 
     const url = `./data/performance/${id}.json`;
     $.getJSON(url, json => {
+      json = mockData(json);
       chart.changeData(json);
     });
   });
 
   // tooltip 在停止 touch 一秒后消失
-  $('#mountNode').on('touchend', e => {
-    setTimeout(() => {
-      chart.hideTooltip();
-    }, 800);
-  });
+  // $('#mountNode').on('touchend', e => {
+  //   setTimeout(() => {
+  //     chart.hideTooltip();
+  //   }, 800);
+  // })
+
 </script>
 </body>
 </html>
