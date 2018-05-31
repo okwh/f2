@@ -14,7 +14,7 @@
   </div>
   <!-- Content here -->
   <div class="chart-wrapper">
-    <div class="tooltip-wrapper hidden">
+    <div class="tooltip-wrapper">
       <div class="tooltip-title" id="tooltipTitle"></div>
       <div class="tooltip-content" id="tooltip">
         <div class="item">
@@ -78,14 +78,12 @@
   Animate.registerAnimation('lineUpdate', function(updateShape, animateCfg) {
     var cacheShape = updateShape.get('cacheShape'); // 该动画 shape 的前一个状态
     var cacheAttrs = cacheShape.attrs; // 上一个 shape 属性
-    // var geomType = cacheShape.geomType; // 图形类型
 
     var oldPoints = cacheAttrs.points; // 上一个状态的关键点
     var newPoints = updateShape.attr('points'); // 当前 shape 的关键点
 
     var oldLength = oldPoints.length;
     var newLength = newPoints.length;
-    // var deltaLength = (geomType === 'area') ? (oldLength - newLength) / 2 : (oldLength - newLength);
     var deltaLength = oldLength - newLength;
 
     if (deltaLength > 0 ) {
@@ -248,10 +246,13 @@
           $(ele).css({ color });
           $(ele).text(value + '%');
         });
-        $('.tooltip-wrapper').removeClass('hidden');
+        // $('.tooltip-wrapper').removeClass('hidden');
+        $('.tooltip-wrapper').css('visibility', 'visible');
       },
       onHide() {
-        $('.tooltip-wrapper').addClass('hidden');
+        // $('.tooltip-wrapper').addClass('hidden');
+        $('.tooltip-wrapper').css('visibility', 'hidden');
+
       }
     });
     chart.line()
@@ -264,11 +265,11 @@
       })
       .animate({
         appear: {
-          duration: 500,
+          duration: 450,
         },
         update: {
           animation: 'lineUpdate',
-          duration: 500
+          duration: 450
         }
       });
     chart.render();
@@ -293,11 +294,11 @@
   });
 
   // tooltip 在停止 touch 一秒后消失
-  $('#mountNode').on('touchend', e => {
-    setTimeout(() => {
-      chart.hideTooltip();
-    }, 800);
-  });
+  // $('#mountNode').on('touchend', e => {
+  //   setTimeout(() => {
+  //     chart.hideTooltip();
+  //   }, 800);
+  // });
 </script>
 </body>
 </html>
